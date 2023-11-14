@@ -2,78 +2,64 @@ import socket
 import threading
 import json
 
-clients = {}
-log_file = "server_log.txt"
 
-def client_thread(conn, addr):
-    client_id = None
+class Server:
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+        self.clients = {}
+        self.lock = threading.Lock()
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((ip, port))
+        self.server_socket.listen()
 
-    try:
-        data = conn.recv(1024)
-        if not data:
-            print(f"No data received from {addr}. Closing connection.")
-            return
-
-        client_info = json.loads(data.decode())
-        client_id = client_info['id']
-
-        # Register or reconnect client
-        if client_id in clients:
-            if clients[client_id]['active']:
-                conn.send("ERROR".encode())
-                print(f"Duplicate connection attempt from {client_id}")
-                return
-            else:
-                clients[client_id]['active'] = True
-                conn.send("ACK".encode())
-                print(f"Client {client_id} reconnected")
-        else:
-            clients[client_id] = {'counter': 0, 'active': True}
-            conn.send("ACK".encode())
-            print(f"New client {client_id} connected")
-
-        # Handle client commands
+    def listen(self):
+        print(f"Server listening on {self.ip}:{self.port}")
         while True:
-            data = conn.recv(1024).decode()
-            if not data:
-                print(f"Client {client_id} disconnected.")
+            client, address = self.server_socket.accept()
+            threading.Thread(target=self.handle_client, args=(client,)).start()
+
+    def handle_client(self, client_socket):
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if not message:
+                    break
+                response = self.process_request(message)
+                client_socket.send(response.encode())
+            except:
                 break
 
-            if data.startswith("INCREASE") or data.startswith("DECREASE"):
-                command, amount_str = data.split()
-                amount = int(amount_str)
+    def process_request(self, message):
+        data = json.loads(message)
+        client_id = data['id']
+        password = data['password']
+        action = data.get('action')
+        amount = int(data.get('amount', 0))
 
-                if command == "INCREASE":
-                    clients[client_id]['counter'] += amount
-                elif command == "DECREASE":
-                    clients[client_id]['counter'] -= amount
+        with self.lock:
+            if client_id not in self.clients or self.clients[client_id]['password'] == password:
+                if client_id not in self.clients:
+                    self.clients[client_id] = {'password': password, 'counter': 0}
+                if action == 'INCREASE':
+                    self.clients[client_id]['counter'] += amount
+                elif action == 'DECREASE':
+                    self.clients[client_id]['counter'] -= amount
+                self.log_counter_change(client_id)
+                return f"ACK: Counter updated to {self.clients[client_id]['counter']}"
+            else:
+                return "ERROR: Invalid credentials"
 
-                log_entry = f"{client_id}: {clients[client_id]['counter']}\n"
-                with open(log_file, "a") as log:
-                    log.write(log_entry)
-                print(f"Logged to file: {log_entry}")
+    def log_counter_change(self, client_id):
+        with open("server_log.txt", "a") as file:
+            file.write(f"{client_id}: {self.clients[client_id]['counter']}\n")
 
-            elif data == "LOGOUT":
-                break
 
-    except Exception as e:
-        print(f"Error with client {client_id}: {e}")
-
-    finally:
-        if client_id and client_id in clients:
-            clients[client_id]['active'] = False
-            print(f"Connection with client {client_id} closed.")
-        conn.close()
-
-def start_server(ip, port):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((ip, port))
-    server_socket.listen(5)
-    print(f"Server listening on {ip}:{port}")
-
-    while True:
-        conn, addr = server_socket.accept()
-        threading.Thread(target=client_thread, args=(conn, addr)).start()
-
-# Start the server
-start_server("127.0.0.1", 65430)
+if __name__ == "__main__":
+    try:
+        server = Server("127.0.0.1", 65431)
+        server.listen()
+    except OSError as e:
+        print(f"Error starting server: {e}")
+    except KeyboardInterrupt:
+        print("Server shutting down.")
