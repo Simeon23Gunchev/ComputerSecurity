@@ -3,7 +3,11 @@ import json
 import time
 import sys
 
-
+#Alexandra Zamfir i6273294
+#Mihaela Stanoeva i6273299
+#Anna Nowowiejska i6289598
+#Simeon Gunchev i6242650
+#Adelin Birzan i6285129
 class Client:
     def __init__(self, config_file):
         with open(config_file, 'r') as file:
