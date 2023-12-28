@@ -1,3 +1,5 @@
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import base64
 import socket
 import json
 import time
@@ -13,6 +15,7 @@ class Client:
         with open(config_file, 'r') as file:
             self.config = json.load(file)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.key = b'secret' 
 
     def connect(self):
         self.socket.connect((self.config['server']['ip'], self.config['server']['port']))
@@ -38,6 +41,12 @@ class Client:
         self.perform_actions()
         self.socket.close()
 
+    def encrypt_data(self, data):
+        data_bytes = json.dumps(data).encode('utf-8')
+        nonce = AESGCM.generate_nonce()
+        cipher = AESGCM(self.key)
+        ciphertext = cipher.encrypt(nonce, data_bytes, None)
+        return base64.b64encode(nonce + ciphertext)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
