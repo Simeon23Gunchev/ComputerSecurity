@@ -17,8 +17,8 @@ The project was made by :
 For the fix it phase, vulnerabilities fixed :
 
 1. The client-server communication changed to using encryption.
-2. Fixed the No Constraints on the Number of Requests problem with a limit of 10 connections within 1 minute
-3. Added max number of attempts of a certain client so that you are blocked after 3 missed password,id combinations
+2. Fixed the No Constraints on the Number of Requests problem
+3. Added max number of attempts of a certain client
 4. Added token generation for session management for each client
 5. Added encryption on client to server messages and made the server decrypt it
 6. Handling unsupported data types
