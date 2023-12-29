@@ -1,3 +1,5 @@
+import os
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import base64
 import socket
@@ -6,15 +8,16 @@ import time
 import sys
 import ssl
 
+from KeyManager import KeyManager
+
 
 class Client:
     def __init__(self, config_file):
         with open(config_file, 'r') as file:
             self.config = json.load(file)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         self.session_token = None
-        self.key = b'secret' 
+        self.key = KeyManager.get_key()
 
     def connect(self):
         context = ssl.create_default_context()
@@ -24,7 +27,8 @@ class Client:
         self.socket = context.wrap_socket(self.socket, server_hostname=self.config['server']['ip'])
         self.socket.connect((self.config['server']['ip'], self.config['server']['port']))
         registration_data = json.dumps({"id": self.config['id'], "password": self.config['password']})
-        self.socket.send(registration_data.encode())
+        encrypted_data = self.encrypt_data(registration_data)
+        self.socket.send(encrypted_data.encode())
         response = self.socket.recv(1024).decode()
         self.session_token = self.extract_token(response)
         print(f"Server response: {response}")
@@ -38,38 +42,42 @@ class Client:
 
     def perform_actions(self):
         for action in self.config['actions']['steps']:
-            #if action.startswith("INCREASE") or action.startswith("DECREASE"):
-                command, amount = action.split()
-
-                try:
-                    amount = int(amount)
-                    action_data = json.dumps({"id": self.config['id'], "password": self.config['password'], "action": command, "amount": amount})
-                    self.socket.send(action_data.encode())
-                    response = self.socket.recv(1024).decode()
-                    if response.startswith("ERROR:"):
-                        print(f"Server response: {response}")
-                        self.socket.close()
-                        sys.exit(1)
+            command, amount = action.split()
+            try:
+                amount = int(amount)
+                action_data = json.dumps(
+                    {"id": self.config['id'], "password": self.config['password'], "action": command, "amount": amount,
+                     "token": self.session_token})
+                encrypted_data = self.encrypt_data(action_data)
+                self.socket.send(encrypted_data.encode())
+                # self.socket.send(action_data.encode())
+                response = self.socket.recv(1024).decode()
+                if response.startswith("ERROR:"):
                     print(f"Server response: {response}")
-                    time.sleep(self.config['actions']['delay'])
-                    
-                
-                except ValueError:
-                    print("Error: Unsupported data type or value for amount.")
                     self.socket.close()
                     sys.exit(1)
+                print(f"Server response: {response}")
+                time.sleep(self.config['actions']['delay'])
+
+
+            except ValueError:
+                print("Error: Unsupported data type or value for amount.")
+                self.socket.close()
+                sys.exit(1)
 
     def start(self):
         self.connect()
         self.perform_actions()
+        print("Logged out")
         self.socket.close()
 
     def encrypt_data(self, data):
-        data_bytes = json.dumps(data).encode('utf-8')
-        nonce = AESGCM.generate_nonce()
-        cipher = AESGCM(self.key)
-        ciphertext = cipher.encrypt(nonce, data_bytes, None)
-        return base64.b64encode(nonce + ciphertext)
+        aesgcm = AESGCM(self.key)
+        nonce = os.urandom(12)
+        data_bytes = json.dumps(data).encode()
+        ciphertext = aesgcm.encrypt(nonce, data_bytes, None)
+        return base64.b64encode(nonce + ciphertext).decode()
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

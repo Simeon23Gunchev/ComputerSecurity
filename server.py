@@ -1,3 +1,4 @@
+import base64
 import socket
 import threading
 import json
@@ -6,6 +7,9 @@ import time
 import uuid
 import hashlib
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from KeyManager import KeyManager
 
 
 # for the client-server communication, we choose to use a ssl encryption. This will help with the vulnerability with
@@ -27,6 +31,7 @@ class Server:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((ip, port))
         self.server_socket.listen()
+        self.key = KeyManager.get_key()
 
     def generate_session_token(self):
         return str(uuid.uuid4())
@@ -59,7 +64,13 @@ class Server:
                     continue
 
                 client_request.append(current_time)
-                message = client_socket.recv(1024).decode()
+                encrypted_message = client_socket.recv(1024).decode()
+
+                if not encrypted_message:
+                    break
+
+                message = self.decrypt_data(encrypted_message)
+
                 if not message:
                     break
 
@@ -87,6 +98,18 @@ class Server:
             except Exception as e:
                 print(f"Error: {e}")
                 break
+
+    def decrypt_data(self, encrypted_data):
+        aesgcm = AESGCM(self.key)
+        try:
+            encrypted_data_bytes = base64.b64decode(encrypted_data)
+            nonce, ciphertext = encrypted_data_bytes[:12], encrypted_data_bytes[12:]
+            decrypted_str = aesgcm.decrypt(nonce, ciphertext, None).decode()
+            decrypted_json = json.loads(decrypted_str)
+            return decrypted_json
+        except Exception as e:
+            print(f"Decryption error: {e}")
+            return None
 
     def handle_registration(self, data):
         login_fields = ['id', 'password']
@@ -137,16 +160,17 @@ class Server:
 
         password = data['password']
         action = data.get('action')
+
         try:
             amount = int(data.get('amount', 0))
         except ValueError:
-                return "ERROR: Unsupported data type or value for amount."
+            return "ERROR: Unsupported data type or value for amount."
 
         with self.lock:
             if client_id not in self.clients or self.check_password(self.clients[client_id]['password'], password):
                 if client_id not in self.clients:
                     self.clients[client_id] = {'password': password, 'counter': 0}
-                
+
                 if action == 'INCREASE':
                     self.clients[client_id]['counter'] += amount
                     self.log_counter_change(client_id)
@@ -155,7 +179,7 @@ class Server:
                     self.clients[client_id]['counter'] -= amount
                     self.log_counter_change(client_id)
                     return f"ACK: Counter updated to {self.clients[client_id]['counter']}"
-                #self.log_counter_change(client_id)
+                # self.log_counter_change(client_id)
                 else:
                     return "ERROR: Unsupported action."
             else:
@@ -164,12 +188,11 @@ class Server:
     def log_counter_change(self, client_id):
         with open("server_log.txt", "a") as file:
             file.write(f"{client_id}: {self.clients[client_id]['counter']}\n")
-        
 
 
 if __name__ == "__main__":
     try:
-        server = Server("127.0.0.1", 65432)
+        server = Server("127.0.0.1", 65431)
         server.listen()
     except OSError as e:
         print(f"Error starting server: {e}")

@@ -3,7 +3,7 @@
   "password": "password123",
   "server": {
     "ip": "127.0.0.1",
-    "port": 65432
+    "port": 65431
   },
   "actions": {
     "delay": 2,
