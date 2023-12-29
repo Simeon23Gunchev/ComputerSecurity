@@ -38,20 +38,26 @@ class Client:
 
     def perform_actions(self):
         for action in self.config['actions']['steps']:
-            if action.startswith("INCREASE") or action.startswith("DECREASE"):
+            #if action.startswith("INCREASE") or action.startswith("DECREASE"):
                 command, amount = action.split()
-                amount = int(amount)
-                action_data = json.dumps(
-                    {"id": self.config['id'],
-                     "password": self.config['password'],
-                     "action": command,
-                     "amount": amount,
-                     "token": self.session_token
-                     })
-                self.socket.send(action_data.encode())
-                response = self.socket.recv(1024).decode()
-                print(f"Server response: {response}")
-                time.sleep(self.config['actions']['delay'])
+
+                try:
+                    amount = int(amount)
+                    action_data = json.dumps({"id": self.config['id'], "password": self.config['password'], "action": command, "amount": amount})
+                    self.socket.send(action_data.encode())
+                    response = self.socket.recv(1024).decode()
+                    if response.startswith("ERROR:"):
+                        print(f"Server response: {response}")
+                        self.socket.close()
+                        sys.exit(1)
+                    print(f"Server response: {response}")
+                    time.sleep(self.config['actions']['delay'])
+                    
+                
+                except ValueError:
+                    print("Error: Unsupported data type or value for amount.")
+                    self.socket.close()
+                    sys.exit(1)
 
     def start(self):
         self.connect()

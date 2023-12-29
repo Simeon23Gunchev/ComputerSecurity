@@ -7,6 +7,7 @@ import uuid
 import hashlib
 
 
+
 # for the client-server communication, we choose to use a ssl encryption. This will help with the vulnerability with
 # the transmission of data.
 
@@ -136,24 +137,34 @@ class Server:
 
         password = data['password']
         action = data.get('action')
-        amount = int(data.get('amount', 0))
+        try:
+            amount = int(data.get('amount', 0))
+        except ValueError:
+                return "ERROR: Unsupported data type or value for amount."
 
         with self.lock:
             if client_id not in self.clients or self.check_password(self.clients[client_id]['password'], password):
                 if client_id not in self.clients:
                     self.clients[client_id] = {'password': password, 'counter': 0}
+                
                 if action == 'INCREASE':
                     self.clients[client_id]['counter'] += amount
+                    self.log_counter_change(client_id)
+                    return f"ACK: Counter updated to {self.clients[client_id]['counter']}"
                 elif action == 'DECREASE':
                     self.clients[client_id]['counter'] -= amount
-                self.log_counter_change(client_id)
-                return f"ACK: Counter updated to {self.clients[client_id]['counter']}"
+                    self.log_counter_change(client_id)
+                    return f"ACK: Counter updated to {self.clients[client_id]['counter']}"
+                #self.log_counter_change(client_id)
+                else:
+                    return "ERROR: Unsupported action."
             else:
                 return "ERROR: Invalid credentials"
 
     def log_counter_change(self, client_id):
         with open("server_log.txt", "a") as file:
             file.write(f"{client_id}: {self.clients[client_id]['counter']}\n")
+        
 
 
 if __name__ == "__main__":
