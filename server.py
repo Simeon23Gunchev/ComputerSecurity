@@ -11,16 +11,6 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from KeyManager import KeyManager
 
-
-# for the client-server communication, we choose to use a ssl encryption. This will help with the vulnerability with
-# the transmission of data.
-
-# fixed the No Constraints on the Number of Requests problem with a limit of 10 connections within 1 minute
-
-# added max number of attempts of a certain client so that you are blocked after 3 missed password,id combinations
-# and handled large data packets sent to the server
-
-# ADDED token generation for session management for each client and password hashing
 class Server:
     def __init__(self, ip, port):
         self.ip = ip
