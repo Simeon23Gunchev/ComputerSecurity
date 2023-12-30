@@ -25,3 +25,4 @@ For the fix it phase, vulnerabilities fixed :
 7. Basic error handling
 8. Handled large data packets sent to the server
 9. Password hashing
+10. Assure that the amount to be increased or decreased is nonnegative

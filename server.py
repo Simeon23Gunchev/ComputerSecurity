@@ -153,6 +153,8 @@ class Server:
 
         try:
             amount = int(data.get('amount', 0))
+            if amount < 0:
+                return "ERROR: Unsupported data type or value for amount."
         except ValueError:
             return "ERROR: Unsupported data type or value for amount."
 
