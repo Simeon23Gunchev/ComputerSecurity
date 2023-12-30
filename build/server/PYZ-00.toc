@@ -1,6 +1,6 @@
-('C:\\Users\\adeli\\PycharmProjects\\ComputerSecuritynew\\build\\server\\PYZ-00.pyz',
+('C:\\Users\\adeli\\PycharmProjects\\ComputerSecurity89\\build\\server\\PYZ-00.pyz',
  [('KeyManager',
-   'C:\\Users\\adeli\\PycharmProjects\\ComputerSecuritynew\\KeyManager.py',
+   'C:\\Users\\adeli\\PycharmProjects\\ComputerSecurity89\\KeyManager.py',
    'PYMODULE'),
   ('__future__',
    'C:\\Users\\adeli\\AppData\\Local\\Programs\\Python\\Python310\\lib\\__future__.py',

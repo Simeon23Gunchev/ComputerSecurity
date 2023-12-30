@@ -1,5 +1,5 @@
 In order to test the functionalities of the program:
-1. go to the dist folder and run the server.exe 
+1. go to the dist folder and run the server.exe, if you do not have the key.bin file run the server.exe twice
 2. open cmd and navigate to the path of the dist folder 
 3. type : " client.exe client1.json " and you will get the output
 

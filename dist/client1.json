@@ -7,6 +7,6 @@
   },
   "actions": {
     "delay": 5,
-    "steps": ["INCREASE 1", "DECREASE 5"]
+    "steps": ["INCREASE 1", "DECREASE 5", "INCREASE 20" , "INCREASE 90"]
   }
 }
